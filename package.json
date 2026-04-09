@@ -1,0 +1,14 @@
+{
+  "name": "eco-alternatives",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "fetch-data": "node scripts/fetch-data.js",
+    "seed-kv": "node scripts/seed-kv.js",
+    "pipeline": "node scripts/fetch-data.js && node scripts/seed-kv.js",
+    "deploy": "cd cf-worker && wrangler deploy"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,11 @@
+name = "eco-alternatives-score"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+kv_namespaces = [
+  { binding = "SCORES_KV", id = "c8c281b2f5364fc9a6571ca292de5f6a" }
+]
+
+# Monthly cron: re-runs the ETL pipeline on the 1st of each month at 02:00 UTC.
+[triggers]
+crons = ["0 2 1 * *"]

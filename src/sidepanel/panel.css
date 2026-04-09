@@ -1,0 +1,192 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+[hidden] { display: none !important; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  color: #111827;
+  background: #ffffff;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 20px;
+  min-height: 100vh;
+}
+
+/* ── Header ───────────────────────────────── */
+
+header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.logo {
+  font-size: 20px;
+}
+
+#brand-name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ── Score section ────────────────────────── */
+
+#score-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+#score-box {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border: 2px solid #374151;
+  border-radius: 8px;
+  padding: 6px 12px;
+  min-width: 68px;
+  justify-content: center;
+}
+
+#score-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.score-denom {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+#score-box[data-tier="good"] { border-color: #16a34a; }
+#score-box[data-tier="good"] #score-value { color: #16a34a; }
+
+#score-box[data-tier="fair"] { border-color: #d97706; }
+#score-box[data-tier="fair"] #score-value { color: #d97706; }
+
+#score-box[data-tier="poor"] { border-color: #dc2626; }
+#score-box[data-tier="poor"] #score-value { color: #dc2626; }
+
+#score-box[data-tier="unknown"] { border-color: #9ca3af; }
+#score-box[data-tier="unknown"] #score-value { color: #9ca3af; font-size: 18px; }
+
+#stars {
+  display: flex;
+  gap: 2px;
+}
+
+.star {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.star.filled { color: #f59e0b; }
+.star.empty  { color: #d1d5db; }
+
+#score-label {
+  font-size: 13px;
+  color: #6b7280;
+  padding-bottom: 12px;
+}
+
+/* ── Alternatives section ─────────────────── */
+
+#alternatives-section h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #111827;
+  margin-bottom: 12px;
+}
+
+#alternatives-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.alt-card {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.alt-card:hover {
+  border-color: #9ca3af;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.alt-card img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  background-color: #f3f4f6;
+  display: block;
+}
+
+.card-info {
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #111827;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.card-platform {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* ── Waiting state ────────────────────────── */
+
+#waiting-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 16px;
+  text-align: center;
+}
+
+#waiting-state p {
+  font-size: 14px;
+  color: #9ca3af;
+  line-height: 1.6;
+}

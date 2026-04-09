@@ -1,0 +1,12 @@
+# Downloaded datasets — run `npm run fetch-data` to regenerate
+data/*.json
+
+# Environment
+.env
+.env.local
+
+# Node
+node_modules/
+
+# Wrangler
+cf-worker/.wrangler/

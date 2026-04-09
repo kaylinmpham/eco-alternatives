@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eco Alternatives</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <span class="logo">🌿</span>
+      <span id="brand-name">Eco Alternatives</span>
+    </header>
+
+    <div id="waiting-state">
+      <p>Navigate to a product page to see its sustainability score and alternatives.</p>
+    </div>
+
+    <div id="product-state" hidden>
+      <div id="score-section">
+        <div class="score-row">
+          <div id="score-box">
+            <span id="score-value">—</span>
+            <span class="score-denom">/5</span>
+          </div>
+          <div id="stars"></div>
+        </div>
+        <p id="score-label"></p>
+      </div>
+
+      <div id="alternatives-section">
+        <h3>Secondhand &amp; sustainable alternatives</h3>
+        <div id="alternatives-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+</html>
