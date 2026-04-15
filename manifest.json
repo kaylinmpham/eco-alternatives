@@ -1,28 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "Eco Alternatives",
+  "name": "Mint Condition",
   "version": "0.1.0",
-  "description": "Sustainability scores and secondhand alternatives while you shop.",
+  "description": "Find it in mint condition. Secondhand alternatives while you shop.",
   "permissions": ["sidePanel", "storage"],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/worker.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": [
-        "src/content/detector.js",
-        "src/content/index.js"
-      ]
+      "js": ["src/content/detector.js", "src/content/index.js"]
     }
   ],
   "side_panel": {
     "default_path": "src/sidepanel/index.html"
   },
   "action": {
-    "default_title": "Eco Alternatives"
+    "default_title": "Mint"
   }
 }

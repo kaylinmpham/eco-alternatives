@@ -35,3 +35,8 @@ new MutationObserver(() => {
 });
 
 tryDetectAndReport();
+
+// Retry a couple of times for sites that render meta tags or the h1 via
+// client-side JS after DOMContentLoaded (e.g. headless/SPA storefronts).
+setTimeout(() => { if (!lastReportedHadImage) tryDetectAndReport(); }, 1500);
+setTimeout(() => { if (!lastReportedHadImage) tryDetectAndReport(); }, 4000);

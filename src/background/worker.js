@@ -76,6 +76,9 @@ function buildFallbackAlternatives(product) {
 async function fetchEbayAlternatives(product) {
   const query = (product.name || product.brand || '').split(' ').slice(0, 6).join(' ');
 
+  // Read the user's saved size preferences (set via the side-panel settings).
+  const { sizes = [] } = await chrome.storage.local.get('sizes');
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
@@ -84,7 +87,8 @@ async function fetchEbayAlternatives(product) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         imageUrl: product.image || null,
-        query: query || null
+        query: query || null,
+        sizes: sizes.length ? sizes : undefined,
       }),
       signal: controller.signal
     });
@@ -104,8 +108,9 @@ async function handleProductDetected(product, tabId) {
   const payload = { product, scoreData, alternatives };
   await chrome.storage.session.set({ [`product_${tabId}`]: payload });
 
-  chrome.action.setBadgeText({ text: '●', tabId });
-  chrome.action.setBadgeBackgroundColor({ color: '#16a34a', tabId });
+  // The tab may have been closed or navigated away during the async fetch.
+  try { chrome.action.setBadgeText({ text: '●', tabId }); } catch {}
+  try { chrome.action.setBadgeBackgroundColor({ color: '#16a34a', tabId }); } catch {}
 
   chrome.runtime.sendMessage({ type: 'PRODUCT_DATA', ...payload }).catch(() => {});
 }

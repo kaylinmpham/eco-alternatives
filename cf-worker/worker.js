@@ -28,112 +28,198 @@ function normaliseBrand(name) {
 }
 
 // ---------------------------------------------------------------------------
-// SerpApi helpers — Google Lens (visual) + Google Shopping (name fallback)
-// Swap in eBay Browse API helpers once eBay developer access is available.
+// eBay Browse API helpers — image search + text search fallback
 // ---------------------------------------------------------------------------
 
-const SERPAPI_URL = 'https://serpapi.com/search.json';
+const EBAY_TOKEN_URL   = 'https://api.ebay.com/identity/v1/oauth2/token';
+const EBAY_BROWSE_BASE = 'https://api.ebay.com/buy/browse/v1';
+const EBAY_SCOPE       = 'https://api.ebay.com/oauth/api_scope';
+const EBAY_TOKEN_KV    = 'ebay_token_cache';
 
-// Resale/secondhand platforms — sort these to the top of results.
-const RESALE_DOMAINS = [
-  'ebay.com', 'poshmark.com', 'depop.com', 'therealreal.com',
-  'thredup.com', 'mercari.com', 'vestiairecollective.com', 'vinted.com',
-];
+// Markets to fan out text search to. Image search stays US-only (heavier call).
+const SEARCH_MARKETS = ['EBAY_US', 'EBAY_GB', 'EBAY_DE'];
 
-function isResale(url) {
-  const lower = (url || '').toLowerCase();
-  return RESALE_DOMAINS.some(d => lower.includes(d));
-}
+const MARKET_LABELS = {
+  EBAY_US: 'eBay US',
+  EBAY_GB: 'eBay UK',
+  EBAY_DE: 'eBay DE',
+};
 
-function extractPlatform(sourceOrUrl) {
-  const s = (sourceOrUrl || '').toLowerCase();
-  if (s.includes('ebay'))       return 'eBay';
-  if (s.includes('poshmark'))   return 'Poshmark';
-  if (s.includes('depop'))      return 'Depop';
-  if (s.includes('therealreal')) return 'TheRealReal';
-  if (s.includes('thredup'))    return 'ThredUp';
-  if (s.includes('mercari'))    return 'Mercari';
-  if (s.includes('vestiaire'))  return 'Vestiaire';
-  if (s.includes('vinted'))     return 'Vinted';
-  try {
-    return new URL(s.startsWith('http') ? s : `https://${s}`).hostname.replace(/^www\./, '');
-  } catch {
-    return 'Shop';
+const CURRENCY_SYMBOLS = {
+  USD: '$', GBP: '\u00a3', EUR: '\u20ac', AUD: 'A$', CAD: 'C$',
+};
+
+// Fetch (or return cached) Application-level OAuth token, stored in KV
+// so we don't re-authenticate on every request (token valid ~2 hours).
+async function getEbayToken(env) {
+  const cached = await env.SCORES_KV.get(EBAY_TOKEN_KV, 'json');
+  if (cached && cached.expires_at > Date.now() + 60_000) {
+    return { token: cached.access_token };
   }
+
+  const credentials = btoa(`${env.EBAY_CLIENT_ID}:${env.EBAY_CLIENT_SECRET}`);
+  const res = await fetch(EBAY_TOKEN_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: `grant_type=client_credentials&scope=${encodeURIComponent(EBAY_SCOPE)}`,
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    return { error: `eBay auth ${res.status}: ${errText}` };
+  }
+
+  const data = await res.json();
+  await env.SCORES_KV.put(
+    EBAY_TOKEN_KV,
+    JSON.stringify({
+      access_token: data.access_token,
+      expires_at: Date.now() + data.expires_in * 1000,
+    }),
+    { expirationTtl: data.expires_in - 60 },
+  );
+  return { token: data.access_token };
 }
 
-function normaliseVisualMatches(items) {
-  const sorted = [...(items || [])].sort((a, b) => isResale(b.link) - isResale(a.link));
-  return sorted.slice(0, 8).map((item, i) => ({
-    id: i + 1,
-    name: item.title || 'Similar item',
-    price: item.price?.value || (typeof item.price === 'string' ? item.price : '') || '',
-    platform: extractPlatform(item.source || item.link),
-    image: item.thumbnail || null,
-    url: item.link,
-  }));
+function ebayHeaders(token, marketplaceId = 'EBAY_US') {
+  return {
+    'Authorization': `Bearer ${token}`,
+    'X-EBAY-C-MARKETPLACE-ID': marketplaceId,
+    'Content-Type': 'application/json',
+  };
 }
 
-function normaliseShoppingResults(items) {
-  const sorted = [...(items || [])].sort((a, b) => isResale(b.link) - isResale(a.link));
-  return sorted.slice(0, 8).map((item, i) => ({
-    id: i + 1,
-    name: item.title || 'Similar item',
-    price: item.price || '',
-    platform: extractPlatform(item.source || item.link),
-    image: item.thumbnail || null,
-    url: item.link,
-  }));
+function normaliseEbayItems(items, marketplaceId = 'EBAY_US') {
+  return (items || []).slice(0, 8).map((item, i) => {
+    const currency = item.price?.currency || 'USD';
+    const symbol = CURRENCY_SYMBOLS[currency] || (currency + '\u00a0');
+    const price = item.price ? `${symbol}${parseFloat(item.price.value).toFixed(2)}` : '';
+    return {
+      id: i + 1,
+      name: item.title || 'eBay listing',
+      price,
+      platform: MARKET_LABELS[marketplaceId] || 'eBay',
+      condition: item.condition || '',
+      image: item.image?.imageUrl || null,
+      url: item.itemWebUrl || `https://www.ebay.com/itm/${item.itemId}`,
+    };
+  });
 }
 
-// Wrap a fetch with an explicit timeout so one slow SerpApi call
+// Returns eBay aspect_filter string for size filtering, or null if no sizes given.
+// Format: aspectName:Size,aspectValueName:S|M|L
+function buildAspectFilter(sizes) {
+  if (!sizes || sizes.length === 0) return null;
+  return `aspectName:Size,aspectValueName:${sizes.join('|')}`;
+}
+
+// Wrap a fetch with an explicit timeout so one slow API call
 // can't block the entire CF Worker response indefinitely.
-async function fetchWithTimeout(url, timeoutMs) {
+async function fetchWithTimeout(url, timeoutMs, options = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: controller.signal });
+    const res = await fetch(url, { ...options, signal: controller.signal });
     return res;
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function searchByImage(imageUrl, apiKey) {
-  const params = new URLSearchParams({
-    engine: 'google_lens',
-    url: imageUrl,
-    api_key: apiKey,
-    hl: 'en',
-  });
+// Fetch a remote image and return its base64 representation for eBay's
+// search_by_image endpoint, which requires raw image data (not a URL).
+async function imageUrlToBase64(url) {
   try {
-    const res = await fetchWithTimeout(`${SERPAPI_URL}?${params}`, 9000);
+    // Basic SSRF guard: only allow http/https image URLs.
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+
+    const res = await fetchWithTimeout(url, 8000);
+    if (!res.ok) return null;
+    const buffer = await res.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  } catch {
+    return null;
+  }
+}
+
+async function ebaySearchByImage(imageUrl, query, token, sizes) {
+  const base64 = await imageUrlToBase64(imageUrl);
+  if (!base64) return null;
+
+  const params = new URLSearchParams({ limit: '20' });
+  if (query) params.set('q', query);
+  const aspectFilter = buildAspectFilter(sizes);
+  if (aspectFilter) params.set('aspect_filter', aspectFilter);
+
+  try {
+    // Image search is US-only — it's a heavier call and we fan out text search instead.
+    const res = await fetchWithTimeout(
+      `${EBAY_BROWSE_BASE}/item_summary/search_by_image?${params}`,
+      15000,
+      { method: 'POST', headers: ebayHeaders(token, 'EBAY_US'), body: JSON.stringify({ image: base64 }) },
+    );
     if (!res.ok) return null;
     const data = await res.json();
-    const items = normaliseVisualMatches(data.visual_matches);
+    const items = normaliseEbayItems(data.itemSummaries, 'EBAY_US');
     return items.length ? items : null;
   } catch {
     return null;
   }
 }
 
-async function searchByName(query, apiKey) {
-  const params = new URLSearchParams({
-    engine: 'google_shopping',
-    q: `${query} used secondhand`,
-    api_key: apiKey,
-    num: '10',
-    hl: 'en',
-    gl: 'us',
-  });
+async function ebaySearchByText(query, token, sizes, marketplaceId = 'EBAY_US') {
+  const params = new URLSearchParams({ q: query, limit: '8' });
+  const aspectFilter = buildAspectFilter(sizes);
+  if (aspectFilter) params.set('aspect_filter', aspectFilter);
+
   try {
-    const res = await fetchWithTimeout(`${SERPAPI_URL}?${params}`, 9000);
+    const res = await fetchWithTimeout(
+      `${EBAY_BROWSE_BASE}/item_summary/search?${params}`,
+      10000,
+      { headers: ebayHeaders(token, marketplaceId) },
+    );
     if (!res.ok) return null;
     const data = await res.json();
-    return normaliseShoppingResults(data.shopping_results || []);
+    const items = normaliseEbayItems(data.itemSummaries, marketplaceId);
+    return items.length ? items : null;
   } catch {
     return null;
   }
+}
+
+// Fan text search out to all SEARCH_MARKETS in parallel, merge + deduplicate,
+// and return up to 8 results interleaved across markets (round-robin by index
+// so no single market dominates the first slots).
+async function ebaySearchMultiMarket(query, token, sizes) {
+  const perMarket = await Promise.all(
+    SEARCH_MARKETS.map(mktId => ebaySearchByText(query, token, sizes, mktId)),
+  );
+
+  // Round-robin interleave: take item 0 from each market, then item 1, etc.
+  const seen = new Set();
+  const merged = [];
+  const maxLen = Math.max(...perMarket.map(r => r?.length || 0));
+  outer: for (let i = 0; i < maxLen; i++) {
+    for (const items of perMarket) {
+      if (!items || i >= items.length) continue;
+      const item = items[i];
+      if (!seen.has(item.url)) {
+        seen.add(item.url);
+        merged.push(item);
+        if (merged.length >= 8) break outer;
+      }
+    }
+  }
+
+  // Re-index ids after merge.
+  merged.forEach((item, i) => { item.id = i + 1; });
+  return merged.length ? merged : null;
 }
 
 // Strip common corporate suffixes before KV lookup.
@@ -194,7 +280,7 @@ export default {
         );
       }
 
-      const { imageUrl, query } = body;
+      const { imageUrl, query, sizes } = body;
       if (!imageUrl && !query) {
         return new Response(
           JSON.stringify({ error: 'imageUrl or query required' }),
@@ -202,25 +288,32 @@ export default {
         );
       }
 
-      if (!env.SERPAPI_KEY) {
+      if (!env.EBAY_CLIENT_ID || !env.EBAY_CLIENT_SECRET) {
         return new Response(
-          JSON.stringify({ error: 'search API not configured' }),
+          JSON.stringify({ error: 'eBay API not configured' }),
           { status: 503, headers: CORS_HEADERS },
         );
       }
 
-      // Run image search and name search in parallel so total latency =
-      // max(image_time, name_time) rather than their sum.
-      const [imageResults, nameResults] = await Promise.all([
-        imageUrl ? searchByImage(imageUrl, env.SERPAPI_KEY) : Promise.resolve(null),
-        query    ? searchByName(query,    env.SERPAPI_KEY) : Promise.resolve(null),
+      const tokenResult = await getEbayToken(env);
+      if (tokenResult.error) {
+        return new Response(
+          JSON.stringify({ error: 'eBay authentication failed' }),
+          { status: 503, headers: CORS_HEADERS },
+        );
+      }
+      const token = tokenResult.token;
+
+      // Image search (US-only) and multi-market text search run in parallel.
+      // Prefer image results when we get enough of them.
+      const [imageResults, textResults] = await Promise.all([
+        imageUrl ? ebaySearchByImage(imageUrl, query, token, sizes) : Promise.resolve(null),
+        query    ? ebaySearchMultiMarket(query, token, sizes)        : Promise.resolve(null),
       ]);
 
-      // Prefer image results (visually similar) if we got enough of them;
-      // otherwise fall back to name results.
       const alternatives = (imageResults && imageResults.length >= 4)
         ? imageResults
-        : (nameResults && nameResults.length ? nameResults : imageResults);
+        : (textResults?.length ? textResults : imageResults);
 
       return new Response(
         JSON.stringify({ alternatives: alternatives || [] }),

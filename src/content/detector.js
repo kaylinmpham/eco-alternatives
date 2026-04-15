@@ -31,7 +31,9 @@ function resolveImage() {
 
 function detectFromOpenGraph() {
   const titleMeta = document.querySelector('meta[property="og:title"]');
-  const rawName = titleMeta?.getAttribute('content')?.trim();
+  // Fall back to the document <title> so we catch sites that skip og:title.
+  const rawName = titleMeta?.getAttribute('content')?.trim()
+    || document.title?.trim() || null;
   if (!rawName) return null;
 
   const { brand, cleanName } = resolveBrand(rawName);
@@ -107,8 +109,12 @@ function detectFromJsonLd() {
   for (const script of scripts) {
     try {
       const data = JSON.parse(script.textContent);
-      const items = Array.isArray(data) ? data : [data];
-      const product = items.find(item => item['@type'] === 'Product');
+      // Flatten: handle top-level array, @graph wrapper, or plain object.
+      const flat = Array.isArray(data) ? data : (data['@graph'] ? data['@graph'] : [data]);
+      const product = flat.find(item => {
+        const t = item['@type'];
+        return t === 'Product' || (Array.isArray(t) && t.includes('Product'));
+      });
 
       if (product) {
         const rawBrand = typeof product.brand === 'string'
@@ -148,6 +154,11 @@ function detectFromDom() {
     'h1.product-name, ' +
     'h1[class*="product-title"], ' +
     'h1[class*="productTitle"]'
+  ) || (
+    // Generic last resort: the first (and often only) h1 on a product page.
+    // Only use this if og:site_name is available to supply the brand — otherwise
+    // we'd risk treating any h1 on non-product pages as a product name.
+    extractBrandFromSiteName() ? document.querySelector('h1') : null
   );
 
   if (!titleEl) return null;
