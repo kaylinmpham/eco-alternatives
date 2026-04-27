@@ -1,7 +1,21 @@
 let lastReportedUrl = '';
 let lastReportedHadImage = false;
 
+function isContextValid() {
+  try { return !!chrome.runtime?.id; } catch { return false; }
+}
+
+function sendMessage(payload) {
+  try {
+    chrome.runtime.sendMessage(payload).catch(() => {});
+  } catch {
+    observer.disconnect();
+  }
+}
+
 function tryDetectAndReport() {
+  if (!isContextValid()) { observer.disconnect(); return; }
+
   const currentUrl = window.location.href;
   const urlChanged = currentUrl !== lastReportedUrl;
 
@@ -16,19 +30,20 @@ function tryDetectAndReport() {
     if (urlChanged) {
       lastReportedUrl = currentUrl;
       lastReportedHadImage = false;
-      chrome.runtime.sendMessage({ type: 'CLEAR_PRODUCT' }).catch(() => {});
+      sendMessage({ type: 'CLEAR_PRODUCT' });
     }
     return;
   }
 
   lastReportedUrl = currentUrl;
   lastReportedHadImage = !!product.image;
-  chrome.runtime.sendMessage({ type: 'PRODUCT_DETECTED', product });
+  sendMessage({ type: 'PRODUCT_DETECTED', product });
 }
 
-new MutationObserver(() => {
+const observer = new MutationObserver(() => {
   tryDetectAndReport();
-}).observe(document.querySelector('title') || document.documentElement, {
+});
+observer.observe(document.querySelector('title') || document.documentElement, {
   subtree: true,
   childList: true,
   characterData: true

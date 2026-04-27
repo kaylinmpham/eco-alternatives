@@ -6,6 +6,6 @@ kv_namespaces = [
   { binding = "SCORES_KV", id = "c8c281b2f5364fc9a6571ca292de5f6a" }
 ]
 
-# Monthly cron: re-runs the ETL pipeline on the 1st of each month at 02:00 UTC.
+# Hourly cron: proactively refreshes the eBay OAuth token before it expires (2h TTL).
 [triggers]
-crons = ["0 2 1 * *"]
+crons = ["0 * * * *"]

@@ -42,58 +42,121 @@ loadSizes().then(renderSizeChips);
 
 // ── Scoring + alternatives rendering ─────────────────────────────────────
 
-const LEAF_SVG_FILLED = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" fill="none"/></svg>`;
-const LEAF_SVG_EMPTY = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg>`;
+const SCORE_SUBLABEL = {
+  1: "Poor transparency across ethics, labour & environment",
+  2: "Below average practices with limited transparency",
+  3: "Some sustainability efforts, but not cutting it",
+  4: "Good practices — meaningful commitments across key areas",
+  5: "Industry-leading sustainability across all areas",
+};
 
-function renderStars(score) {
-  const container = document.getElementById("stars");
-  container.innerHTML = "";
+const PAGE_SIZE = 4;
+let _allAlternatives = [];
+let _visibleCount = 0;
 
-  for (let i = 1; i <= 5; i++) {
-    const leaf = document.createElement("span");
-    leaf.className = i <= score ? "star filled" : "star empty";
-    leaf.innerHTML = i <= score ? LEAF_SVG_FILLED : LEAF_SVG_EMPTY;
-    container.appendChild(leaf);
-  }
+function makeCard(item) {
+  const card = document.createElement("a");
+  card.className = "alt-card";
+  card.href = item.url;
+  card.target = "_blank";
+  card.rel = "noopener noreferrer";
+
+  const img = document.createElement("img");
+  img.src = item.image;
+  img.alt = item.platform;
+
+  const info = document.createElement("div");
+  info.className = "card-info";
+
+  const nameEl = document.createElement("span");
+  nameEl.className = "card-name";
+  nameEl.textContent = item.name;
+
+  const priceEl = document.createElement("span");
+  priceEl.className = "card-price";
+  priceEl.textContent = item.price;
+
+  const platformEl = document.createElement("span");
+  platformEl.className = "card-platform";
+  platformEl.textContent = item.platform;
+
+  info.appendChild(nameEl);
+  info.appendChild(priceEl);
+  info.appendChild(platformEl);
+  card.appendChild(img);
+  card.appendChild(info);
+  return card;
 }
 
 function renderAlternatives(alternatives) {
+  _allAlternatives = alternatives;
+  _visibleCount = 0;
   const grid = document.getElementById("alternatives-grid");
   grid.innerHTML = "";
+  grid.classList.remove("has-more");
+  grid.style.removeProperty("--card-row-height");
+  appendNextPage();
+}
 
-  for (const item of alternatives) {
-    const card = document.createElement("a");
-    card.className = "alt-card";
-    card.href = item.url;
-    card.target = "_blank";
-    card.rel = "noopener noreferrer";
+function appendNextPage() {
+  const grid = document.getElementById("alternatives-grid");
+  const loadMore = document.getElementById("load-more");
+  const nextBatch = _allAlternatives.slice(
+    _visibleCount,
+    _visibleCount + PAGE_SIZE,
+  );
+  const isLoadMore = _visibleCount > 0;
 
-    const img = document.createElement("img");
-    img.src = item.image;
-    img.alt = item.platform;
+  if (
+    isLoadMore &&
+    nextBatch.length > 0 &&
+    !grid.classList.contains("has-more")
+  ) {
+    // Capture the stretched card height before switching row mode
+    const cardHeight = grid.children[0]?.offsetHeight ?? 0;
+    grid.style.setProperty("--card-row-height", cardHeight + "px");
+    grid.classList.add("has-more");
+  }
 
-    const info = document.createElement("div");
-    info.className = "card-info";
+  for (const item of nextBatch) {
+    grid.appendChild(makeCard(item));
+  }
 
-    const nameEl = document.createElement("span");
-    nameEl.className = "card-name";
-    nameEl.textContent = item.name;
+  _visibleCount += nextBatch.length;
+  loadMore.hidden = _visibleCount >= _allAlternatives.length;
 
-    const priceEl = document.createElement("span");
-    priceEl.className = "card-price";
-    priceEl.textContent = item.price;
+  if (isLoadMore && nextBatch.length > 0) {
+    const newCards = grid.querySelectorAll(".alt-card");
+    const firstNew = newCards[newCards.length - nextBatch.length];
+    if (firstNew) {
+      firstNew.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+}
 
-    const platformEl = document.createElement("span");
-    platformEl.className = "card-platform";
-    platformEl.textContent = item.platform;
+document.getElementById("load-more").addEventListener("click", appendNextPage);
 
-    info.appendChild(nameEl);
-    info.appendChild(priceEl);
-    info.appendChild(platformEl);
+const TIER_LABEL = { 1: "We Avoid", 2: "Poor", 3: "Fair", 4: "Good", 5: "Great" };
 
-    card.appendChild(img);
-    card.appendChild(info);
-    grid.appendChild(card);
+function renderTierLadder(scoreData) {
+  const score = scoreData.score;
+  document.querySelectorAll(".tier-rung").forEach((rung) => {
+    const pos = parseInt(rung.dataset.pos, 10);
+    rung.classList.toggle("active", pos === score);
+  });
+  document.getElementById("score-sublabel").textContent =
+    score !== null
+      ? (SCORE_SUBLABEL[score] ?? "")
+      : "No sustainability data for this brand";
+
+  const retailerNote = document.getElementById("retailer-note");
+  if (scoreData.retailerName && scoreData.retailerScore) {
+    retailerNote.textContent =
+      `Sold via ${scoreData.retailerName} — rated ${TIER_LABEL[scoreData.retailerScore]}`;
+    retailerNote.hidden = false;
+  } else {
+    retailerNote.textContent = "";
+    retailerNote.hidden = true;
   }
 }
 
@@ -107,30 +170,23 @@ function renderProduct(data) {
   document.getElementById("waiting-state").hidden = true;
   document.getElementById("product-state").hidden = false;
 
-  document.getElementById("brand-name").textContent =
-    data.product.brand || data.product.name || "Mint";
+  document.getElementById("product-brand").textContent =
+    data.product.brand || data.product.name || "";
 
-  const scoreBox = document.getElementById("score-box");
-  const scoreValue = document.getElementById("score-value");
+  renderTierLadder(data.scoreData);
 
-  if (data.scoreData.score !== null) {
-    scoreValue.textContent = data.scoreData.score;
-    scoreBox.dataset.tier = scoreTier(data.scoreData.score);
-    renderStars(data.scoreData.score);
-  } else {
-    scoreValue.textContent = "?";
-    scoreBox.dataset.tier = "unknown";
-    document.getElementById("stars").innerHTML = "";
-  }
-
-  document.getElementById("score-label").textContent = data.scoreData.label;
   renderAlternatives(data.alternatives);
 }
 
 function showWaitingState() {
   document.getElementById("waiting-state").hidden = false;
   document.getElementById("product-state").hidden = true;
-  document.getElementById("brand-name").textContent = "Mint";
+  document.getElementById("product-brand").textContent = "";
+  document.querySelectorAll(".tier-rung").forEach((r) => r.classList.remove("active"));
+  document.getElementById("score-sublabel").textContent = "";
+  const retailerNote = document.getElementById("retailer-note");
+  retailerNote.textContent = "";
+  retailerNote.hidden = true;
 }
 
 chrome.runtime.onMessage.addListener((message) => {

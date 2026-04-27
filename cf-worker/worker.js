@@ -58,29 +58,50 @@ async function getEbayToken(env) {
   }
 
   const credentials = btoa(`${env.EBAY_CLIENT_ID}:${env.EBAY_CLIENT_SECRET}`);
-  const res = await fetch(EBAY_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: `grant_type=client_credentials&scope=${encodeURIComponent(EBAY_SCOPE)}`,
-  });
-  if (!res.ok) {
-    const errText = await res.text();
-    return { error: `eBay auth ${res.status}: ${errText}` };
+
+  // Retry up to 3 times — CF → eBay OAuth connectivity is intermittently unreliable.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetchWithTimeout(EBAY_TOKEN_URL, 6000, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${credentials}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `grant_type=client_credentials&scope=${encodeURIComponent(EBAY_SCOPE)}`,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        await env.SCORES_KV.put(
+          EBAY_TOKEN_KV,
+          JSON.stringify({
+            access_token: data.access_token,
+            expires_at: Date.now() + data.expires_in * 1000,
+          }),
+        );
+        return { token: data.access_token };
+      }
+    } catch {
+      // timeout or network error — try again unless last attempt
+    }
+
+    if (attempt < 3) {
+      await new Promise(r => setTimeout(r, 400));
+    }
   }
 
-  const data = await res.json();
-  await env.SCORES_KV.put(
-    EBAY_TOKEN_KV,
-    JSON.stringify({
-      access_token: data.access_token,
-      expires_at: Date.now() + data.expires_in * 1000,
-    }),
-    { expirationTtl: data.expires_in - 60 },
-  );
-  return { token: data.access_token };
+  // All attempts failed — fall back to stale cached token if available.
+  // Extend expires_at by 30 min so subsequent requests don't all retry immediately.
+  if (cached) {
+    await env.SCORES_KV.put(
+      EBAY_TOKEN_KV,
+      JSON.stringify({ ...cached, expires_at: Date.now() + 30 * 60 * 1000 }),
+    );
+    return { token: cached.access_token };
+  }
+
+  return { error: 'eBay token unavailable' };
 }
 
 function ebayHeaders(token, marketplaceId = 'EBAY_US') {
@@ -92,7 +113,7 @@ function ebayHeaders(token, marketplaceId = 'EBAY_US') {
 }
 
 function normaliseEbayItems(items, marketplaceId = 'EBAY_US') {
-  return (items || []).slice(0, 8).map((item, i) => {
+  return (items || []).slice(0, 20).map((item, i) => {
     const currency = item.price?.currency || 'USD';
     const symbol = CURRENCY_SYMBOLS[currency] || (currency + '\u00a0');
     const price = item.price ? `${symbol}${parseFloat(item.price.value).toFixed(2)}` : '';
@@ -174,14 +195,14 @@ async function ebaySearchByImage(imageUrl, query, token, sizes) {
 }
 
 async function ebaySearchByText(query, token, sizes, marketplaceId = 'EBAY_US') {
-  const params = new URLSearchParams({ q: query, limit: '8' });
+  const params = new URLSearchParams({ q: query, limit: '20' });
   const aspectFilter = buildAspectFilter(sizes);
   if (aspectFilter) params.set('aspect_filter', aspectFilter);
 
   try {
     const res = await fetchWithTimeout(
       `${EBAY_BROWSE_BASE}/item_summary/search?${params}`,
-      10000,
+      6000,
       { headers: ebayHeaders(token, marketplaceId) },
     );
     if (!res.ok) return null;
@@ -197,9 +218,11 @@ async function ebaySearchByText(query, token, sizes, marketplaceId = 'EBAY_US') 
 // and return up to 8 results interleaved across markets (round-robin by index
 // so no single market dominates the first slots).
 async function ebaySearchMultiMarket(query, token, sizes) {
-  const perMarket = await Promise.all(
+  const settled = await Promise.allSettled(
     SEARCH_MARKETS.map(mktId => ebaySearchByText(query, token, sizes, mktId)),
   );
+
+  const perMarket = settled.map(r => (r.status === 'fulfilled' ? r.value : null));
 
   // Round-robin interleave: take item 0 from each market, then item 1, etc.
   const seen = new Set();
@@ -212,7 +235,7 @@ async function ebaySearchMultiMarket(query, token, sizes) {
       if (!seen.has(item.url)) {
         seen.add(item.url);
         merged.push(item);
-        if (merged.length >= 8) break outer;
+        if (merged.length >= 20) break outer;
       }
     }
   }
@@ -254,6 +277,17 @@ async function kvLookup(brandParam, env) {
 }
 
 export default {
+  // Runs every hour — proactively refreshes the eBay token before it expires.
+  async scheduled(_event, env) {
+    const cached = await env.SCORES_KV.get(EBAY_TOKEN_KV, 'json');
+    if (cached) {
+      // Mark as just-expired so getEbayToken attempts a refresh,
+      // but keeps the stale token available as fallback if refresh fails.
+      await env.SCORES_KV.put(EBAY_TOKEN_KV, JSON.stringify({ ...cached, expires_at: Date.now() - 1 }));
+    }
+    await getEbayToken(env);
+  },
+
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS_HEADERS });

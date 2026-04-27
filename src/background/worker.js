@@ -23,12 +23,21 @@ async function fetchScoreFromApi(brand) {
 
 async function resolveScore(product) {
   const brand = product.brand || product.name;
-  if (!brand) return { score: null, label: 'Could not detect brand on this page' };
+  if (!brand) return { score: null };
 
   const apiResult = await fetchScoreFromApi(brand);
   if (apiResult) return apiResult;
 
-  return { score: null, label: 'No ESG data found for this brand' };
+  // Brand has no score — check if it's sold through a rated retailer
+  // so we can surface that context without conflating the two.
+  if (product.retailer && product.retailer.toLowerCase() !== brand.toLowerCase()) {
+    const retailerResult = await fetchScoreFromApi(product.retailer);
+    if (retailerResult) {
+      return { score: null, retailerName: product.retailer, retailerScore: retailerResult.score };
+    }
+  }
+
+  return { score: null };
 }
 
 // Called when the eBay API is unavailable; returns search-link cards for

@@ -2,21 +2,18 @@
 
 :root {
   /* Base */
-  --color-bg: #F4F0E8; /* Warm off-white — page background */
-  --color-text: #1a1a1a; /* Near black — primary text */
-  --color-text-muted: #7a7060; /* Warm Taupe — secondary text, icons */
-  --color-border: #dbd5c8; /* Sand — borders, dividers */
-  --color-surface-alt: #e2f0ea; /* Mint tint — selected chip bg, image placeholder */
-  --color-dark: #3b341f; /* Dark Khaki — dark surfaces (reserved) */
-  --color-accent: #E8A838; /* Amber — highlight accent */
-
-  /* Primary */
-  --color-primary: #3D9970; /* Mint green — accent, logo, good tier */
+  --color-bg: #faf8f5;
+  --color-text: #201e1b;
+  --color-text-muted: #a09890;
+  --color-border: #e8e4dd;
+  --color-surface-alt: #f0ece5;
+  --color-accent: #c9a94a;
+  --color-chip: #3d5a7a;
 
   /* Score tiers */
-  --color-good: #3D9970; /* Mint green */
-  --color-fair: #E8A838; /* Amber */
-  --color-poor: #c0392b; /* Deep Red */
+  --color-good: #5a9a6e;
+  --color-fair: #c9a94a;
+  --color-poor: #b04a3a;
 }
 
 /* ── Reset ────────────────────────────────── */
@@ -33,18 +30,26 @@
 
 body {
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    "DM Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   font-size: 14px;
   color: var(--color-text);
   background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #app {
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  gap: 20px;
-  min-height: 100vh;
+  padding: 0;
+  gap: 0;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* ── Header ───────────────────────────────── */
@@ -53,27 +58,17 @@ header {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-bottom: 16px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.logo svg {
-  width: 20px;
-  height: 20px;
-  color: var(--color-primary);
-}
-
 #brand-name {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: var(--color-primary);
+  font-family: "Instrument Serif", Georgia, serif;
+  font-size: 17px;
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
 }
 
 #settings-toggle {
@@ -104,22 +99,19 @@ header {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px 0;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--color-border);
 }
 
 .settings-label {
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.01em;
 }
 
 .settings-hint {
   font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
   color: var(--color-text-muted);
 }
 
@@ -135,13 +127,14 @@ header {
 }
 
 .size-chip {
-  border: 1.5px solid var(--color-border);
-  border-radius: 6px;
-  padding: 4px 12px;
-  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
   font-weight: 500;
-  color: var(--color-text);
-  background: var(--color-bg);
+  letter-spacing: 0.02em;
+  color: var(--color-text-muted);
+  background: transparent;
   cursor: pointer;
   transition:
     border-color 0.15s,
@@ -151,176 +144,232 @@ header {
 
 .size-chip:hover {
   border-color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .size-chip.selected {
-  border-color: var(--color-primary);
-  background: var(--color-surface-alt);
-  color: var(--color-primary);
+  border-color: var(--color-chip);
+  background: var(--color-chip);
+  color: #fff;
 }
 
 /* ── Score section ────────────────────────── */
 
-#score-section {
+#product-state {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.score-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+#score-section {
+  border-bottom: 1px solid var(--color-border);
+  padding: 10px 16px 11px;
 }
 
-#score-box {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  border: 2px solid var(--color-text);
-  border-radius: 8px;
-  padding: 6px 12px;
-  min-width: 68px;
-  justify-content: center;
-}
-
-#score-value {
-  font-size: 22px;
-  font-weight: 700;
+#product-brand {
+  font-size: 13px;
+  font-weight: 500;
   color: var(--color-text);
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
 }
 
-.score-denom {
-  font-size: 13px;
-  color: var(--color-text-muted);
-}
-
-#score-box[data-tier="good"] {
-  border-color: var(--color-good);
-}
-#score-box[data-tier="good"] #score-value {
-  color: var(--color-good);
-}
-
-#score-box[data-tier="fair"] {
-  border-color: var(--color-fair);
-}
-#score-box[data-tier="fair"] #score-value {
-  color: var(--color-fair);
-}
-
-#score-box[data-tier="poor"] {
-  border-color: var(--color-poor);
-}
-#score-box[data-tier="poor"] #score-value {
-  color: var(--color-poor);
-}
-
-#score-box[data-tier="unknown"] {
-  border-color: var(--color-text-muted);
-}
-#score-box[data-tier="unknown"] #score-value {
-  color: var(--color-text-muted);
-  font-size: 18px;
-}
-
-#stars {
+#tier-ladder {
   display: flex;
-  gap: 2px;
-  align-items: center;
+  gap: 3px;
+  margin-bottom: 6px;
 }
 
-.star {
-  display: flex;
-  align-items: center;
+.tier-rung {
+  flex: 1;
+  text-align: center;
+  padding: 4px 2px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  border-radius: 3px;
+  color: #c0b8ae;
+  border: 1px solid #e8e3db;
+  background: transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.star svg {
-  width: 20px;
-  height: 20px;
+.tier-rung.active {
+  background: var(--color-accent);
+  color: #fff;
+  border-color: var(--color-accent);
 }
 
-.star.filled {
-  color: var(--color-primary);
-}
-.star.empty {
-  color: var(--color-border);
-}
-
-#score-label {
-  font-size: 13px;
+#score-sublabel {
+  font-size: 10.5px;
   color: var(--color-text-muted);
-  padding-bottom: 12px;
+  line-height: 1.45;
+}
+
+#retailer-note {
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--color-text-muted);
+  opacity: 0.75;
+  font-style: italic;
+  line-height: 1.4;
 }
 
 /* ── Alternatives section ─────────────────── */
 
+#alternatives-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 #alternatives-section h3 {
-  font-size: 13px;
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--color-text);
-  margin-bottom: 12px;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  color: var(--color-text-muted);
+  padding: 10px 16px 8px;
 }
 
 #alternatives-grid {
+  flex: 1;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  background: var(--color-border);
+}
+
+#alternatives-grid.has-more {
+  flex: unset;
+  grid-template-rows: unset;
+  grid-auto-rows: var(--card-row-height, calc(50vw - 1px));
+}
+
+#load-more {
+  display: block;
+  flex-shrink: 0;
+  width: 100%;
+  padding: 12px 0;
+  background: var(--color-bg);
+  border: none;
+  border-top: 1px solid var(--color-border);
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+#load-more:hover {
+  color: var(--color-text);
 }
 
 .alt-card {
-  display: flex;
-  flex-direction: column;
-  border: 1.5px solid var(--color-border);
-  border-radius: 12px;
+  position: relative;
+  display: block;
+  border-radius: 0;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.alt-card:hover {
-  border-color: var(--color-primary);
-  box-shadow: 0 2px 8px rgba(61, 153, 112, 0.15);
+  background-color: var(--color-surface-alt);
 }
 
 .alt-card img {
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   object-fit: cover;
-  background-color: var(--color-surface-alt);
   display: block;
+  transition: transform 0.35s ease;
 }
 
+.alt-card:hover img {
+  transform: scale(1.04);
+}
+
+/* gradient scrim — always present, intensifies on hover */
+.alt-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.68) 0%,
+    rgba(0, 0, 0, 0.22) 40%,
+    transparent 65%
+  );
+  border-radius: inherit;
+  transition: opacity 0.25s ease;
+}
+
+/* card info sits above the scrim */
 .card-info {
-  padding: 8px 10px 10px;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  padding: 10px 10px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  overflow: hidden;
 }
 
-.card-name {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--color-text);
+/* title + platform: hidden at rest, slide up on hover */
+.card-name,
+.card-platform {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    max-height 0.28s ease,
+    opacity 0.22s ease,
+    transform 0.28s ease;
 }
 
-.card-price {
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--color-text);
+.alt-card:hover .card-name,
+.alt-card:hover .card-platform {
+  max-height: 2em;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card-name {
+  font-size: 11px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.8);
+  transition-delay: 0s;
 }
 
 .card-platform {
-  font-size: 11px;
-  color: var(--color-text-muted);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  transition-delay: 0.03s;
+  order: 3;
+}
+
+/* price: always visible */
+.card-price {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #ffffff;
+  order: 2;
 }
 
 /* ── Waiting state ────────────────────────── */
@@ -333,17 +382,25 @@ header {
   gap: 16px;
   padding: 48px 16px;
   text-align: center;
+  flex: 1;
 }
 
 #waiting-state .waiting-leaf {
-  color: var(--color-primary);
-  opacity: 0.35;
+  color: var(--color-text-muted);
+  opacity: 0.4;
   animation: mint-pulse 2.4s ease-in-out infinite;
 }
 
 @keyframes mint-pulse {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.55; transform: scale(1.06); }
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.06);
+  }
 }
 
 #waiting-state p {
@@ -354,5 +411,5 @@ header {
 
 #waiting-state .waiting-hint {
   font-size: 12px;
-  color: var(--color-border);
+  color: var(--color-text-muted);
 }
