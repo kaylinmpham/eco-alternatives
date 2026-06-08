@@ -40,6 +40,46 @@ function isProductPage() {
   return false;
 }
 
+function formatDetectedPrice(amount, currency) {
+  const SYMBOLS = { USD: "$", GBP: "£", EUR: "€", AUD: "A$", CAD: "C$" };
+  const symbol = SYMBOLS[currency] || (currency + " ");
+  return `${symbol}${amount.toFixed(2)}`;
+}
+
+function resolvePrice() {
+  // 1. Meta tags (Facebook/Instagram commerce standard, only set on PDPs)
+  const amountMeta = document.querySelector(
+    'meta[property="product:price:amount"], meta[property="og:price:amount"]',
+  );
+  if (amountMeta) {
+    const amount = parseFloat(amountMeta.getAttribute("content"));
+    if (!isNaN(amount) && amount > 0) {
+      const currencyMeta = document.querySelector(
+        'meta[property="product:price:currency"], meta[property="og:price:currency"]',
+      );
+      return formatDetectedPrice(amount, currencyMeta?.getAttribute("content") || "USD");
+    }
+  }
+
+  // 2. Schema.org itemprop with content attribute (Shopify, WooCommerce, etc.)
+  const schemaPriceEl = document.querySelector('[itemprop="price"][content]');
+  if (schemaPriceEl) {
+    const amount = parseFloat(schemaPriceEl.getAttribute("content"));
+    if (!isNaN(amount) && amount > 0) return formatDetectedPrice(amount, "USD");
+  }
+
+  // 3. Common retailer DOM selectors
+  const priceEl = document.querySelector(
+    '#priceblock_ourprice, #priceblock_dealprice, .a-price .a-offscreen',
+  );
+  if (priceEl) {
+    const text = priceEl.textContent?.trim();
+    if (text && /[\$£€]/.test(text)) return text.split("\n")[0].trim();
+  }
+
+  return null;
+}
+
 // Resolve the best available product image from og:image or a DOM fallback.
 // Sanitises protocol-relative URLs (//) that SerpApi can't use.
 function resolveImage() {
@@ -75,6 +115,7 @@ function detectFromOpenGraph() {
   return {
     name: cleanName,
     brand,
+    price: resolvePrice(),
     image: resolveImage(),
     url: window.location.href,
   };
@@ -196,10 +237,24 @@ function detectFromJsonLd() {
               ? imageRaw[0]
               : imageRaw?.url || null;
         if (image?.startsWith("//")) image = `https:${image}`;
+
+        // Extract price from JSON-LD offers (most reliable source), fall back to DOM.
+        let price = null;
+        const offerRaw = product.offers;
+        if (offerRaw) {
+          const offer = Array.isArray(offerRaw) ? offerRaw[0] : offerRaw;
+          const offerPrice = parseFloat(offer?.price);
+          if (!isNaN(offerPrice) && offerPrice > 0) {
+            price = formatDetectedPrice(offerPrice, offer?.priceCurrency || "USD");
+          }
+        }
+        if (!price) price = resolvePrice();
+
         return {
           name: cleanName,
           brand,
           retailer,
+          price,
           image: image || resolveImage(),
           url: window.location.href,
         };
@@ -246,6 +301,7 @@ function detectFromDom() {
   return {
     name: cleanName,
     brand: resolvedBrand,
+    price: resolvePrice(),
     image: resolveImage(),
     url: window.location.href,
   };

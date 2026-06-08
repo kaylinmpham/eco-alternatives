@@ -22,23 +22,67 @@ function renderSizeChips(selectedSizes) {
         : [...current, size];
       await chrome.storage.local.set({ sizes: updated });
       renderSizeChips(updated);
+      updateSizeToggleLabel(updated);
     });
     container.appendChild(chip);
   }
 }
 
-document
-  .getElementById("settings-toggle")
-  .addEventListener("click", async () => {
-    const section = document.getElementById("settings-section");
-    section.hidden = !section.hidden;
-    if (!section.hidden) {
-      renderSizeChips(await loadSizes());
-    }
-  });
+function updateSizeToggleLabel(sizes) {
+  document.getElementById("size-toggle").classList.toggle(
+    "active",
+    sizes && sizes.length > 0,
+  );
+}
 
-// Pre-render chips so state is ready even before settings are opened.
-loadSizes().then(renderSizeChips);
+document.getElementById("size-toggle").addEventListener("click", async () => {
+  const sizePanel = document.getElementById("size-panel");
+  document.getElementById("price-panel").hidden = true;
+  sizePanel.hidden = !sizePanel.hidden;
+  if (!sizePanel.hidden) {
+    const sizes = await loadSizes();
+    renderSizeChips(sizes);
+  }
+});
+
+loadSizes().then(updateSizeToggleLabel);
+
+// ── Price filter ──────────────────────────────────────────────────────────
+
+let _productPrice = null;
+let _priceFilterActive = false;
+
+function parsePrice(str) {
+  if (!str) return null;
+  const num = parseFloat(str.replace(/[^0-9.]/g, ""));
+  return isNaN(num) ? null : num;
+}
+
+function getFilteredAlternatives() {
+  if (!_priceFilterActive || !_productPrice) return _allAlternatives;
+  const productNum = parsePrice(_productPrice);
+  if (productNum === null) return _allAlternatives;
+  return _allAlternatives.filter((alt) => {
+    const altNum = parsePrice(alt.price);
+    return altNum !== null && altNum < productNum;
+  });
+}
+
+document.getElementById("price-filter").addEventListener("click", () => {
+  const pricePanel = document.getElementById("price-panel");
+  document.getElementById("size-panel").hidden = true;
+  pricePanel.hidden = !pricePanel.hidden;
+});
+
+document.querySelectorAll(".price-option").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".price-option").forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    _priceFilterActive = btn.dataset.filter === "under";
+    document.getElementById("price-filter").classList.toggle("active", _priceFilterActive);
+    rerender();
+  });
+});
 
 // ── Scoring + alternatives rendering ─────────────────────────────────────
 
@@ -53,6 +97,18 @@ const SCORE_SUBLABEL = {
 const PAGE_SIZE = 4;
 let _allAlternatives = [];
 let _visibleCount = 0;
+
+function rerender() {
+  _visibleCount = 0;
+  const grid = document.getElementById("alternatives-grid");
+  grid.innerHTML = "";
+  grid.classList.remove("has-more");
+  grid.style.removeProperty("--card-row-height");
+  const filtered = getFilteredAlternatives();
+  document.getElementById("no-results-state").hidden = filtered.length > 0;
+  if (filtered.length > 0) appendNextPage();
+  else document.getElementById("load-more").hidden = true;
+}
 
 function makeCard(item) {
   const card = document.createElement("a");
@@ -95,16 +151,17 @@ function renderAlternatives(alternatives) {
   grid.innerHTML = "";
   grid.classList.remove("has-more");
   grid.style.removeProperty("--card-row-height");
-  appendNextPage();
+  const filtered = getFilteredAlternatives();
+  document.getElementById("no-results-state").hidden = filtered.length > 0;
+  if (filtered.length > 0) appendNextPage();
+  else document.getElementById("load-more").hidden = true;
 }
 
 function appendNextPage() {
+  const filtered = getFilteredAlternatives();
   const grid = document.getElementById("alternatives-grid");
   const loadMore = document.getElementById("load-more");
-  const nextBatch = _allAlternatives.slice(
-    _visibleCount,
-    _visibleCount + PAGE_SIZE,
-  );
+  const nextBatch = filtered.slice(_visibleCount, _visibleCount + PAGE_SIZE);
   const isLoadMore = _visibleCount > 0;
 
   if (
@@ -112,7 +169,6 @@ function appendNextPage() {
     nextBatch.length > 0 &&
     !grid.classList.contains("has-more")
   ) {
-    // Capture the stretched card height before switching row mode
     const cardHeight = grid.children[0]?.offsetHeight ?? 0;
     grid.style.setProperty("--card-row-height", cardHeight + "px");
     grid.classList.add("has-more");
@@ -123,13 +179,17 @@ function appendNextPage() {
   }
 
   _visibleCount += nextBatch.length;
-  loadMore.hidden = _visibleCount >= _allAlternatives.length;
+  const exhausted = _visibleCount >= filtered.length;
+  loadMore.disabled = exhausted;
+  loadMore.hidden = false;
 
   if (isLoadMore && nextBatch.length > 0) {
     const newCards = grid.querySelectorAll(".alt-card");
     const firstNew = newCards[newCards.length - nextBatch.length];
     if (firstNew) {
-      firstNew.scrollIntoView({ behavior: "smooth", block: "start" });
+      const section = document.getElementById("alternatives-section");
+      const delta = firstNew.getBoundingClientRect().top - section.getBoundingClientRect().top;
+      section.scrollBy({ top: delta, behavior: "smooth" });
     }
   }
 }
@@ -158,35 +218,72 @@ function renderTierLadder(scoreData) {
     retailerNote.textContent = "";
     retailerNote.hidden = true;
   }
-}
 
-function scoreTier(score) {
-  if (score >= 4) return "good";
-  if (score === 3) return "fair";
-  return "poor";
+  document.getElementById("ai-note").hidden = scoreData.source !== "ai";
 }
 
 function renderProduct(data) {
   document.getElementById("waiting-state").hidden = true;
+  document.getElementById("loading-state").hidden = true;
   document.getElementById("product-state").hidden = false;
 
-  document.getElementById("product-brand").textContent =
-    data.product.brand || data.product.name || "";
+  const { product, scoreData } = data;
 
-  renderTierLadder(data.scoreData);
+  // Set up price filter for this product.
+  _productPrice = product.price || null;
+  _priceFilterActive = false;
+  const priceFilterBtn = document.getElementById("price-filter");
+  priceFilterBtn.classList.remove("active");
+  document.getElementById("price-panel").hidden = true;
+  document.querySelectorAll(".price-option").forEach((b) => b.classList.remove("selected"));
+  document.querySelector('.price-option[data-filter="any"]').classList.add("selected");
+  if (_productPrice) {
+    document.getElementById("price-under-option").textContent = `Only under ${_productPrice}`;
+    priceFilterBtn.hidden = false;
+  } else {
+    priceFilterBtn.hidden = true;
+  }
+
+  if (scoreData.retailerIsPrimary) {
+    document.getElementById("product-brand").textContent = scoreData.retailerName;
+    const retailerNote = document.getElementById("retailer-note");
+    retailerNote.textContent = `Stocking: ${product.brand || product.name}`;
+    retailerNote.hidden = false;
+    renderTierLadder({ score: scoreData.retailerScore, source: scoreData.retailerSource });
+  } else {
+    document.getElementById("product-brand").textContent =
+      product.brand || product.name || "";
+    renderTierLadder(scoreData);
+  }
 
   renderAlternatives(data.alternatives);
 }
 
 function showWaitingState() {
   document.getElementById("waiting-state").hidden = false;
+  document.getElementById("loading-state").hidden = true;
   document.getElementById("product-state").hidden = true;
   document.getElementById("product-brand").textContent = "";
   document.querySelectorAll(".tier-rung").forEach((r) => r.classList.remove("active"));
   document.getElementById("score-sublabel").textContent = "";
-  const retailerNote = document.getElementById("retailer-note");
-  retailerNote.textContent = "";
-  retailerNote.hidden = true;
+  document.getElementById("retailer-note").textContent = "";
+  document.getElementById("retailer-note").hidden = true;
+  document.getElementById("ai-note").hidden = true;
+  _productPrice = null;
+  _priceFilterActive = false;
+  document.getElementById("price-filter").hidden = true;
+  document.getElementById("price-filter").classList.remove("active");
+  document.getElementById("price-panel").hidden = true;
+  document.querySelectorAll(".price-option").forEach((b) => b.classList.remove("selected"));
+  document.querySelector('.price-option[data-filter="any"]').classList.add("selected");
+  document.getElementById("size-panel").hidden = true;
+}
+
+function showLoadingState(brand) {
+  document.getElementById("waiting-state").hidden = true;
+  document.getElementById("loading-state").hidden = false;
+  document.getElementById("product-state").hidden = true;
+  document.getElementById("loading-brand-name").textContent = brand || "item";
 }
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -196,16 +293,28 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "SHOW_WAITING_STATE") {
     showWaitingState();
   }
+  if (message.type === "SHOW_LOADING_STATE") {
+    showLoadingState(message.brand);
+  }
 });
 
 function requestCurrentProduct(retriesLeft) {
   chrome.runtime.sendMessage({ type: "GET_CURRENT_PRODUCT" }, (response) => {
-    if (response) {
+    if (response?.loading) {
+      showLoadingState(response.brand);
+    } else if (response) {
       renderProduct(response);
     } else if (retriesLeft > 0) {
       setTimeout(() => requestCurrentProduct(retriesLeft - 1), 1500);
+    } else {
+      showWaitingState();
     }
   });
 }
+
+chrome.tabs.onActivated.addListener(() => {
+  showWaitingState();
+  requestCurrentProduct(3);
+});
 
 requestCurrentProduct(6);

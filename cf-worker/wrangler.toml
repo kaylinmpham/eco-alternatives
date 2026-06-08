@@ -9,3 +9,8 @@ kv_namespaces = [
 # Hourly cron: proactively refreshes the eBay OAuth token before it expires (2h TTL).
 [triggers]
 crons = ["0 * * * *"]
+
+# Secrets (set via wrangler CLI, never committed to source):
+#   wrangler secret put ANTHROPIC_API_KEY
+#   wrangler secret put EBAY_CLIENT_ID
+#   wrangler secret put EBAY_CLIENT_SECRET

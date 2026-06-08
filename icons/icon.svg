@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect width="128" height="128" rx="24" fill="#faf8f5"/>
+  <!-- Price tag -->
+  <rect x="8" y="58" width="26" height="34" rx="4" fill="#d4b0a8"/>
+  <rect x="8" y="47" width="26" height="20" rx="13" fill="#d4b0a8"/>
+  <circle cx="21" cy="53" r="3.5" fill="#faf8f5"/>
+  <!-- Stems -->
+  <line x1="80" y1="87" x2="101" y2="43" stroke="#6a8a5a" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="80" y1="87" x2="66" y2="61" stroke="#6a8a5a" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="80" y1="87" x2="96" y2="57" stroke="#6a8a5a" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="80" y1="87" x2="73" y2="41" stroke="#6a8a5a" stroke-width="2.4" stroke-linecap="round"/>
+  <line x1="80" y1="87" x2="84" y2="30" stroke="#6a8a5a" stroke-width="2" stroke-linecap="round"/>
+  <!-- Leaves (back to front) -->
+  <circle cx="104" cy="39" r="14" fill="#8aab7e" opacity="0.65"/>
+  <circle cx="65" cy="58" r="13" fill="#8aab7e" opacity="0.72"/>
+  <circle cx="99" cy="55" r="16" fill="#7a9e72" opacity="0.82"/>
+  <circle cx="74" cy="38" r="16" fill="#8db882" opacity="0.90"/>
+  <circle cx="85" cy="25" r="11" fill="#ced47a" opacity="0.85"/>
+  <!-- Pot rim -->
+  <rect x="59" y="84" width="42" height="10" rx="5" fill="#c5a59c"/>
+  <!-- Pot body -->
+  <rect x="62" y="93" width="36" height="27" rx="4" fill="#d4b0a8"/>
+</svg>

@@ -7,64 +7,227 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Instrument+Serif:ital@0;1&display=swap"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=Fraunces:ital,opsz,wght@0,9..144,300;1,9..144,300;1,9..144,400&family=Instrument+Serif:ital@0;1&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="panel.css" />
   </head>
   <body>
     <div id="app">
-      <header>
-        <span id="brand-name">Mint</span>
-        <button
-          id="settings-toggle"
-          aria-label="Size preferences"
-          title="Size preferences"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path
-              d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"
-            />
-          </svg>
-        </button>
-      </header>
-
-      <div id="settings-section" hidden>
-        <p class="settings-label">
-          My sizes <span class="settings-hint">— filters eBay results</span>
-        </p>
-        <div id="size-chips"></div>
-        <p class="settings-footer">Select none to show all sizes.</p>
-      </div>
-
       <div id="waiting-state">
         <svg
           class="waiting-leaf"
           xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          width="52"
-          height="52"
+          viewBox="0 0 96 96"
+          width="72"
+          height="72"
         >
-          <path
-            d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10z"
+          <!-- Price tag -->
+          <rect x="7" y="44" width="20" height="26" rx="3" fill="#d4b0a8" />
+          <rect x="7" y="36" width="20" height="16" rx="10" fill="#d4b0a8" />
+          <circle cx="17" cy="40" r="2.5" fill="#faf8f5" />
+          <!-- Stems -->
+          <line
+            x1="60"
+            y1="65"
+            x2="76"
+            y2="32"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
           />
-          <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+          <line
+            x1="60"
+            y1="65"
+            x2="50"
+            y2="46"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <line
+            x1="60"
+            y1="65"
+            x2="72"
+            y2="43"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <line
+            x1="60"
+            y1="65"
+            x2="55"
+            y2="31"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <line
+            x1="60"
+            y1="65"
+            x2="63"
+            y2="23"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <!-- Leaves (back to front) -->
+          <circle
+            class="l1"
+            cx="78"
+            cy="30"
+            r="10"
+            fill="#8aab7e"
+            opacity="0.65"
+          />
+          <circle
+            class="l2"
+            cx="50"
+            cy="44"
+            r="10"
+            fill="#8aab7e"
+            opacity="0.72"
+          />
+          <circle
+            class="l3"
+            cx="74"
+            cy="41"
+            r="12"
+            fill="#7a9e72"
+            opacity="0.82"
+          />
+          <circle
+            class="l4"
+            cx="55"
+            cy="30"
+            r="12"
+            fill="#8db882"
+            opacity="0.90"
+          />
+          <circle
+            class="l5"
+            cx="64"
+            cy="21"
+            r="8"
+            fill="#ced47a"
+            opacity="0.85"
+          />
+          <!-- Pot rim -->
+          <rect x="44" y="63" width="32" height="7" rx="3.5" fill="#c5a59c" />
+          <!-- Pot body -->
+          <rect x="47" y="69" width="26" height="20" rx="3" fill="#d4b0a8" />
         </svg>
         <p>Browse a product page and we'll find it secondhand for you.</p>
         <span class="waiting-hint">eBay listings, filtered to your size.</span>
+      </div>
+
+      <div id="loading-state" hidden>
+        <svg
+          class="waiting-leaf"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 96 96"
+          width="72"
+          height="72"
+        >
+          <!-- Price tag -->
+          <rect x="7" y="44" width="20" height="26" rx="3" fill="#d4b0a8" />
+          <rect x="7" y="36" width="20" height="16" rx="10" fill="#d4b0a8" />
+          <circle cx="17" cy="40" r="2.5" fill="#faf8f5" />
+          <!-- Stems -->
+          <line
+            x1="60"
+            y1="65"
+            x2="76"
+            y2="32"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <line
+            x1="60"
+            y1="65"
+            x2="50"
+            y2="46"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <line
+            x1="60"
+            y1="65"
+            x2="72"
+            y2="43"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <line
+            x1="60"
+            y1="65"
+            x2="55"
+            y2="31"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <line
+            x1="60"
+            y1="65"
+            x2="63"
+            y2="23"
+            stroke="#6a8a5a"
+            stroke-width="1.8"
+            stroke-linecap="round"
+          />
+          <!-- Leaves (back to front) -->
+          <circle
+            class="l1"
+            cx="78"
+            cy="30"
+            r="10"
+            fill="#8aab7e"
+            opacity="0.65"
+          />
+          <circle
+            class="l2"
+            cx="50"
+            cy="44"
+            r="10"
+            fill="#8aab7e"
+            opacity="0.72"
+          />
+          <circle
+            class="l3"
+            cx="74"
+            cy="41"
+            r="12"
+            fill="#7a9e72"
+            opacity="0.82"
+          />
+          <circle
+            class="l4"
+            cx="55"
+            cy="30"
+            r="12"
+            fill="#8db882"
+            opacity="0.90"
+          />
+          <circle
+            class="l5"
+            cx="64"
+            cy="21"
+            r="8"
+            fill="#ced47a"
+            opacity="0.85"
+          />
+          <!-- Pot rim -->
+          <rect x="44" y="63" width="32" height="7" rx="3.5" fill="#c5a59c" />
+          <!-- Pot body -->
+          <rect x="47" y="69" width="26" height="20" rx="3" fill="#d4b0a8" />
+        </svg>
+        <p>Searching for <em id="loading-brand-name"></em> secondhand…</p>
+        <span class="waiting-hint">This usually takes a few seconds.</span>
       </div>
 
       <div id="product-state" hidden>
@@ -79,6 +242,7 @@
           </div>
           <div id="score-sublabel"></div>
           <div id="retailer-note" hidden></div>
+          <div id="ai-note" hidden>AI estimate</div>
         </div>
 
         <div id="alternatives-section">
@@ -86,8 +250,58 @@
             Find it in <em><strong>mint condition.</strong></em>
           </h3>
           <div id="alternatives-grid"></div>
+          <div id="no-results-state" hidden>
+            <p>No secondhand listings found for this item.</p>
+          </div>
+          <div id="size-panel" hidden>
+            <div id="size-chips"></div>
+          </div>
+          <div id="price-panel" hidden>
+            <button class="price-option selected" data-filter="any">
+              All prices
+            </button>
+            <button
+              class="price-option"
+              data-filter="under"
+              id="price-under-option"
+            >
+              Under retail
+            </button>
+          </div>
         </div>
-        <button id="load-more" hidden>Load more</button>
+
+        <div id="bottom-bar">
+          <button id="size-toggle" aria-label="Filter by size">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path
+                d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.57a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.57a2 2 0 0 0-1.34-2.23z"
+              />
+            </svg>
+          </button>
+          <button id="load-more" hidden>Load more</button>
+          <button id="price-filter" aria-label="Filter by price" hidden>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
 

@@ -3,10 +3,10 @@
 :root {
   /* Base */
   --color-bg: #faf8f5;
-  --color-text: #201e1b;
-  --color-text-muted: #a09890;
-  --color-border: #e8e4dd;
-  --color-surface-alt: #f0ece5;
+  --color-text: #1e1a14;
+  --color-text-muted: #6a5e4a;
+  --color-border: #e2dbd0;
+  --color-surface-alt: #ece7de;
   --color-accent: #c9a94a;
   --color-chip: #3d5a7a;
 
@@ -44,6 +44,7 @@ body {
 }
 
 #app {
+  position: relative;
   display: flex;
   flex-direction: column;
   padding: 0;
@@ -52,72 +53,55 @@ body {
   overflow: hidden;
 }
 
-/* ── Header ───────────────────────────────── */
+/* ── Size panel / price panel (above bottom bar) ── */
 
-header {
+#size-panel,
+#price-panel {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 14px;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-bg);
+  z-index: 10;
+}
+
+#price-panel {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--color-border);
+  flex-direction: row;
+  gap: 6px;
 }
 
-#brand-name {
-  font-family: "Instrument Serif", Georgia, serif;
-  font-size: 17px;
-  font-weight: 400;
-  font-style: italic;
-  letter-spacing: -0.01em;
-  color: var(--color-text);
-}
-
-#settings-toggle {
-  margin-left: auto;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--color-text-muted);
-  padding: 2px 4px;
+.price-option {
+  flex: 1;
+  border: 1px solid var(--color-border);
   border-radius: 4px;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s;
-}
-
-#settings-toggle svg {
-  width: 16px;
-  height: 16px;
-}
-
-#settings-toggle:hover {
-  color: var(--color-text);
-}
-
-/* ── Settings section ─────────────────────── */
-
-#settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.settings-label {
+  padding: 4px 10px;
+  font-family: inherit;
   font-size: 11px;
   font-weight: 500;
+  letter-spacing: 0.02em;
   color: var(--color-text-muted);
-  letter-spacing: 0.01em;
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  white-space: nowrap;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
 }
 
-.settings-hint {
-  font-weight: 400;
-  color: var(--color-text-muted);
+.price-option:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
-.settings-footer {
-  font-size: 11px;
-  color: var(--color-text-muted);
+.price-option.selected {
+  border-color: var(--color-chip);
+  background: var(--color-chip);
+  color: #fff;
 }
 
 #size-chips {
@@ -127,9 +111,11 @@ header {
 }
 
 .size-chip {
+  flex: 1;
   border: 1px solid var(--color-border);
   border-radius: 4px;
   padding: 4px 10px;
+  text-align: center;
   font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -161,20 +147,22 @@ header {
   gap: 0;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: clip;
 }
 
 #score-section {
   border-bottom: 1px solid var(--color-border);
-  padding: 10px 16px 11px;
+  padding: 12px 20px;
 }
 
 #product-brand {
-  font-size: 13px;
-  font-weight: 500;
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+  font-weight: 300;
   color: var(--color-text);
-  letter-spacing: 0.01em;
-  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 14px;
 }
 
 #tier-ladder {
@@ -191,8 +179,8 @@ header {
   font-weight: 500;
   letter-spacing: 0.02em;
   border-radius: 3px;
-  color: #c0b8ae;
-  border: 1px solid #e8e3db;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
   background: transparent;
   white-space: nowrap;
   overflow: hidden;
@@ -206,18 +194,29 @@ header {
 }
 
 #score-sublabel {
-  font-size: 10.5px;
+  font-size: 12px;
   color: var(--color-text-muted);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 #retailer-note {
   margin-top: 5px;
   font-size: 10px;
   color: var(--color-text-muted);
-  opacity: 0.75;
-  font-style: italic;
   line-height: 1.4;
+}
+
+#ai-note {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
 }
 
 /* ── Alternatives section ─────────────────── */
@@ -227,25 +226,34 @@ header {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
+  padding: 0 4px 4px;
+  position: relative;
 }
 
 #alternatives-section h3 {
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-  color: var(--color-text-muted);
-  padding: 10px 16px 8px;
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 15px;
+  font-weight: 300;
+  color: var(--color-text);
+  padding: 12px 20px;
+}
+
+#alternatives-section h3 strong {
+  font-weight: 300;
 }
 
 #alternatives-grid {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 2px;
-  background: var(--color-border);
+  background: var(--color-bg);
+  border-radius: 8px;
 }
 
 #alternatives-grid.has-more {
@@ -254,36 +262,75 @@ header {
   grid-auto-rows: var(--card-row-height, calc(50vw - 1px));
 }
 
-#load-more {
-  display: block;
+/* ── Bottom bar ───────────────────────────── */
+
+#bottom-bar {
+  display: flex;
+  align-items: stretch;
   flex-shrink: 0;
-  width: 100%;
-  padding: 12px 0;
-  background: var(--color-bg);
-  border: none;
   border-top: 1px solid var(--color-border);
-  border-radius: 0;
+  background: var(--color-bg);
+}
+
+#bottom-bar button {
+  background: none;
+  border: none;
+  padding: 10px 14px;
+  font-family: inherit;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   color: var(--color-text-muted);
   cursor: pointer;
   transition: color 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-#load-more:hover {
+#bottom-bar button:hover {
   color: var(--color-text);
+}
+
+#size-toggle svg,
+#price-filter svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Use #bottom-bar #load-more (specificity 2,0,0) to win over #bottom-bar button (1,0,1) */
+#bottom-bar #load-more {
+  flex: 1;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+}
+
+#bottom-bar #load-more:hover {
+  color: var(--color-accent);
+}
+
+#bottom-bar #load-more:disabled {
+  color: var(--color-text-muted);
+  cursor: default;
+  pointer-events: none;
+}
+
+#size-toggle.active,
+#price-filter.active {
+  color: var(--color-chip);
 }
 
 .alt-card {
   position: relative;
   display: block;
-  border-radius: 0;
+  border-radius: 8px;
   overflow: hidden;
   text-decoration: none;
   color: inherit;
-  background-color: var(--color-surface-alt);
 }
 
 .alt-card img {
@@ -372,44 +419,95 @@ header {
   order: 2;
 }
 
-/* ── Waiting state ────────────────────────── */
+/* ── No results state ─────────────────────── */
 
-#waiting-state {
+#no-results-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+#no-results-state p {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+/* ── Waiting / loading states ─────────────── */
+
+#waiting-state,
+#loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 48px 16px;
+  gap: 22px;
+  padding: 52px 28px 48px;
   text-align: center;
   flex: 1;
 }
 
-#waiting-state .waiting-leaf {
-  color: var(--color-text-muted);
-  opacity: 0.4;
+#waiting-state .waiting-leaf,
+#loading-state .waiting-leaf {
   animation: mint-pulse 2.4s ease-in-out infinite;
 }
 
-@keyframes mint-pulse {
+.l1,
+.l2,
+.l3,
+.l4,
+.l5 {
+  animation: leaf-glow 5.5s ease-in-out infinite;
+}
+.l2 {
+  animation-delay: 0s;
+}
+.l3 {
+  animation-delay: 0.3s;
+}
+.l1 {
+  animation-delay: 0.6s;
+}
+.l4 {
+  animation-delay: 0.9s;
+}
+.l5 {
+  animation-delay: 1.2s;
+}
+
+@keyframes leaf-glow {
   0%,
   100% {
-    opacity: 0.3;
-    transform: scale(1);
+    filter: brightness(1);
   }
-  50% {
-    opacity: 0.55;
-    transform: scale(1.06);
+  20% {
+    filter: brightness(1.18);
+  }
+  45% {
+    filter: brightness(1);
   }
 }
 
-#waiting-state p {
-  font-size: 14px;
-  color: var(--color-text-muted);
-  line-height: 1.6;
+#waiting-state p,
+#loading-state p {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-size: 18px;
+  font-weight: 300;
+  color: var(--color-text);
+  line-height: 1.5;
 }
 
-#waiting-state .waiting-hint {
+#waiting-state .waiting-hint,
+#loading-state .waiting-hint {
   font-size: 12px;
   color: var(--color-text-muted);
+}
+
+#loading-brand-name {
+  font-style: normal;
+  color: var(--color-text);
 }

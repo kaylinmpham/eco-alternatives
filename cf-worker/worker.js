@@ -1,14 +1,17 @@
 /**
  * Cloudflare Worker — eco-alternatives ESG scoring endpoint
  *
- * Serves brand sustainability scores from KV, populated by the ETL pipeline
- * in scripts/fetch-data.js + scripts/seed-kv.js.
+ * Score lookup chain (in order):
+ *   1. KV store — FTI / WFF data seeded at deploy time
+ *   2. Good On You — live fetch from directory.goodonyou.eco, cached in KV 30 days
+ *   3. Claude AI estimate — cached in KV 90 days; max 50 new calls/day
  *
- * Data sources (via WikiRate open data API, CC BY-NC 4.0):
- *   - Fashion Transparency Index 2023 (250 brands, broad ethics/labour/environment)
- *   - What Fuels Fashion? 2025 (200 brands, climate & energy)
+ * Data sources:
+ *   - Fashion Transparency Index (Fashion Revolution / WikiRate, CC BY-NC 4.0)
+ *   - Good On You brand ratings (goodonyou.eco)
+ *   - Claude Haiku AI estimate (Anthropic)
  *
- * Composite score: FTI 2023 × 0.6 + WFF 2025 × 0.4 → mapped to 1–5 stars.
+ * Secrets required: ANTHROPIC_API_KEY (wrangler secret put ANTHROPIC_API_KEY)
  */
 
 const CORS_HEADERS = {
@@ -25,6 +28,164 @@ function normaliseBrand(name) {
     .replace(/[^a-z0-9\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+const SCORE_LABELS = {
+  5: 'Great — industry-leading sustainability across all areas',
+  4: 'Good — meaningful commitments across ethics, labour & environment',
+  3: "It's a start — some sustainability efforts, room to improve",
+  2: 'Poor — below average practices with limited transparency',
+  1: 'We avoid — poor transparency and sustainability record',
+};
+
+// ---------------------------------------------------------------------------
+// Good On You lookup — fetches goodonyou.eco on cache miss, caches 30 days
+// ---------------------------------------------------------------------------
+
+// Convert a brand display name to the slug format used by Good On You URLs.
+// e.g. "Free People" → "free-people", "Abercrombie & Fitch" → "abercrombie-and-fitch"
+function brandToGoySlug(brandName) {
+  return brandName
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/['']/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+async function goyLookup(brandParam, env) {
+  const cacheKey = `goy_${normaliseBrand(brandParam)}`;
+
+  const cached = await env.SCORES_KV.get(cacheKey, 'json');
+  // null means the key doesn't exist yet; {score:null} means we cached a miss
+  if (cached !== null) return cached.score != null ? cached : null;
+
+  const slug = brandToGoySlug(brandParam);
+  if (!slug || slug.length < 2) return null;
+
+  try {
+    const res = await fetch(`https://directory.goodonyou.eco/brand/${slug}`, {
+      headers: { 'User-Agent': 'mint-condition-extension/1.0' },
+    });
+
+    if (!res.ok) {
+      await env.SCORES_KV.put(cacheKey, JSON.stringify({ score: null }), { expirationTtl: 604800 }); // 7 days
+      return null;
+    }
+
+    const html = await res.text();
+    // Matches "Rated : Good", "Rated: It's a start", etc.
+    const m = html.match(/Rated\s*:?\s*(Great|Good|It[’']s a [Ss]tart|Not [Gg]ood [Ee]nough|We [Aa]void)/i);
+    if (!m) {
+      await env.SCORES_KV.put(cacheKey, JSON.stringify({ score: null }), { expirationTtl: 604800 });
+      return null;
+    }
+
+    const ratingText = m[1].toLowerCase().replace(/[’']/g, "'");
+    const GOY_SCORE_MAP = { 'great': 5, 'good': 4, "it's a start": 3, 'not good enough': 2, 'we avoid': 1 };
+    const score = GOY_SCORE_MAP[ratingText];
+    if (!score) {
+      await env.SCORES_KV.put(cacheKey, JSON.stringify({ score: null }), { expirationTtl: 604800 });
+      return null;
+    }
+
+    const payload = {
+      score,
+      label: SCORE_LABELS[score],
+      source: 'goy',
+      methodology: 'Good On You brand rating (goodonyou.eco). Independently assessed.',
+      updatedAt: new Date().toISOString().slice(0, 10),
+    };
+    await env.SCORES_KV.put(cacheKey, JSON.stringify(payload), { expirationTtl: 2592000 }); // 30 days
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Claude AI fallback — estimates score for brands not in KV or GOY
+// ---------------------------------------------------------------------------
+
+async function aiScoreLookup(brandParam, env) {
+  if (!env.ANTHROPIC_API_KEY) return null;
+
+  const normKey = normaliseBrand(brandParam);
+  // Reject inputs that look like junk (too short/long, non-brand characters)
+  if (normKey.length < 2 || normKey.length > 80) return null;
+  if (!/^[a-z0-9\s-]+$/.test(normKey)) return null;
+
+  const aiCacheKey = `ai_${normKey}`;
+  const cached = await env.SCORES_KV.get(aiCacheKey, 'json');
+  if (cached !== null) return cached.score != null ? cached : null;
+
+  // Hard cap: max 50 new AI calls per day to prevent runaway costs
+  const today = new Date().toISOString().slice(0, 10);
+  const counterKey = `ai_calls_${today}`;
+  const callCount = (await env.SCORES_KV.get(counterKey, 'json')) ?? 0;
+  if (callCount >= 50) return null;
+
+  let aiResult;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 100,
+        messages: [{
+          role: 'user',
+          content: `Rate the fashion brand "${brandParam}" on sustainability (1–5):\n1=We Avoid  2=Poor  3=Fair  4=Good  5=Great\n\nBase this on publicly known ethics, labour, and environmental practices.\nJSON only: {"score":1-5,"confidence":"high"|"medium"|"low"}\nNo reliable info about this brand: {"score":null,"confidence":"none"}`,
+        }],
+      }),
+    });
+    if (!res.ok) {
+      console.error(`AI score API error for "${brandParam}": ${res.status} ${res.statusText}`);
+      return null;
+    }
+    const data = await res.json();
+    const raw = data.content?.[0]?.text?.trim() ?? '';
+    // Extract JSON from the response even if the model wraps it in prose.
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    aiResult = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+  } catch (err) {
+    console.error(`AI score lookup failed for "${brandParam}":`, err);
+    return null;
+  }
+
+  if (!aiResult || typeof aiResult !== 'object') return null;
+
+  // Increment daily counter whether we got a score or not
+  await env.SCORES_KV.put(counterKey, JSON.stringify(callCount + 1), { expirationTtl: 86400 });
+
+  const { score, confidence } = aiResult;
+
+  if (score == null || confidence === 'none') {
+    await env.SCORES_KV.put(aiCacheKey, JSON.stringify({ score: null }), { expirationTtl: 2592000 });
+    return null;
+  }
+
+  const scoreInt = Math.round(score);
+  if (scoreInt < 1 || scoreInt > 5) return null;
+
+  const payload = {
+    score: scoreInt,
+    label: SCORE_LABELS[scoreInt],
+    confidence,
+    source: 'ai',
+    methodology: 'Claude AI estimate based on publicly available brand information.',
+    updatedAt: new Date().toISOString().slice(0, 10),
+  };
+  // Cache confident scores 90 days, low-confidence 30 days
+  const ttl = confidence === 'low' ? 2592000 : 7776000;
+  await env.SCORES_KV.put(aiCacheKey, JSON.stringify(payload), { expirationTtl: ttl });
+  return payload;
 }
 
 // ---------------------------------------------------------------------------
@@ -367,17 +528,23 @@ export default {
       );
     }
 
-    const result = await kvLookup(brandParam, env);
-    if (result) {
-      return new Response(JSON.stringify(result), { headers: CORS_HEADERS });
-    }
+    // 1. FTI / WFF — seeded in KV at deploy time
+    const kvResult = await kvLookup(brandParam, env);
+    if (kvResult) return new Response(JSON.stringify(kvResult), { headers: CORS_HEADERS });
 
-    // Not in database
+    // 2. Good On You — live fetch, cached in KV 30 days
+    const goyResult = await goyLookup(brandParam, env);
+    if (goyResult) return new Response(JSON.stringify(goyResult), { headers: CORS_HEADERS });
+
+    // 3. Claude AI estimate — cached in KV 90 days, max 50 new calls/day
+    const aiResult = await aiScoreLookup(brandParam, env);
+    if (aiResult) return new Response(JSON.stringify(aiResult), { headers: CORS_HEADERS });
+
     return new Response(
       JSON.stringify({
         score: null,
-        label: 'No data found for this brand',
-        hint: 'We cover ~300 major fashion brands scored by Fashion Revolution research.',
+        label: 'No sustainability data found for this brand',
+        hint: 'We check FTI research, Good On You ratings, and AI estimates.',
       }),
       { headers: CORS_HEADERS }
     );
