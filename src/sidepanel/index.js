@@ -29,10 +29,9 @@ function renderSizeChips(selectedSizes) {
 }
 
 function updateSizeToggleLabel(sizes) {
-  document.getElementById("size-toggle").classList.toggle(
-    "active",
-    sizes && sizes.length > 0,
-  );
+  document
+    .getElementById("size-toggle")
+    .classList.toggle("active", sizes && sizes.length > 0);
 }
 
 document.getElementById("size-toggle").addEventListener("click", async () => {
@@ -76,10 +75,14 @@ document.getElementById("price-filter").addEventListener("click", () => {
 
 document.querySelectorAll(".price-option").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".price-option").forEach((b) => b.classList.remove("selected"));
+    document
+      .querySelectorAll(".price-option")
+      .forEach((b) => b.classList.remove("selected"));
     btn.classList.add("selected");
     _priceFilterActive = btn.dataset.filter === "under";
-    document.getElementById("price-filter").classList.toggle("active", _priceFilterActive);
+    document
+      .getElementById("price-filter")
+      .classList.toggle("active", _priceFilterActive);
     rerender();
   });
 });
@@ -188,7 +191,9 @@ function appendNextPage() {
     const firstNew = newCards[newCards.length - nextBatch.length];
     if (firstNew) {
       const section = document.getElementById("alternatives-section");
-      const delta = firstNew.getBoundingClientRect().top - section.getBoundingClientRect().top;
+      const delta =
+        firstNew.getBoundingClientRect().top -
+        section.getBoundingClientRect().top;
       section.scrollBy({ top: delta, behavior: "smooth" });
     }
   }
@@ -196,7 +201,13 @@ function appendNextPage() {
 
 document.getElementById("load-more").addEventListener("click", appendNextPage);
 
-const TIER_LABEL = { 1: "We Avoid", 2: "Poor", 3: "Fair", 4: "Good", 5: "Great" };
+const TIER_LABEL = {
+  1: "We Avoid",
+  2: "Poor",
+  3: "Fair",
+  4: "Good",
+  5: "Great",
+};
 
 function renderTierLadder(scoreData) {
   const score = scoreData.score;
@@ -211,8 +222,7 @@ function renderTierLadder(scoreData) {
 
   const retailerNote = document.getElementById("retailer-note");
   if (scoreData.retailerName && scoreData.retailerScore) {
-    retailerNote.textContent =
-      `Sold via ${scoreData.retailerName} — rated ${TIER_LABEL[scoreData.retailerScore]}`;
+    retailerNote.textContent = `Sold via ${scoreData.retailerName} — rated ${TIER_LABEL[scoreData.retailerScore]}`;
     retailerNote.hidden = false;
   } else {
     retailerNote.textContent = "";
@@ -235,21 +245,30 @@ function renderProduct(data) {
   const priceFilterBtn = document.getElementById("price-filter");
   priceFilterBtn.classList.remove("active");
   document.getElementById("price-panel").hidden = true;
-  document.querySelectorAll(".price-option").forEach((b) => b.classList.remove("selected"));
-  document.querySelector('.price-option[data-filter="any"]').classList.add("selected");
+  document
+    .querySelectorAll(".price-option")
+    .forEach((b) => b.classList.remove("selected"));
+  document
+    .querySelector('.price-option[data-filter="any"]')
+    .classList.add("selected");
   if (_productPrice) {
-    document.getElementById("price-under-option").textContent = `Only under ${_productPrice}`;
+    document.getElementById("price-under-option").textContent =
+      `Only under ${_productPrice}`;
     priceFilterBtn.hidden = false;
   } else {
     priceFilterBtn.hidden = true;
   }
 
   if (scoreData.retailerIsPrimary) {
-    document.getElementById("product-brand").textContent = scoreData.retailerName;
+    document.getElementById("product-brand").textContent =
+      scoreData.retailerName;
     const retailerNote = document.getElementById("retailer-note");
     retailerNote.textContent = `Stocking: ${product.brand || product.name}`;
     retailerNote.hidden = false;
-    renderTierLadder({ score: scoreData.retailerScore, source: scoreData.retailerSource });
+    renderTierLadder({
+      score: scoreData.retailerScore,
+      source: scoreData.retailerSource,
+    });
   } else {
     document.getElementById("product-brand").textContent =
       product.brand || product.name || "";
@@ -264,7 +283,9 @@ function showWaitingState() {
   document.getElementById("loading-state").hidden = true;
   document.getElementById("product-state").hidden = true;
   document.getElementById("product-brand").textContent = "";
-  document.querySelectorAll(".tier-rung").forEach((r) => r.classList.remove("active"));
+  document
+    .querySelectorAll(".tier-rung")
+    .forEach((r) => r.classList.remove("active"));
   document.getElementById("score-sublabel").textContent = "";
   document.getElementById("retailer-note").textContent = "";
   document.getElementById("retailer-note").hidden = true;
@@ -274,8 +295,12 @@ function showWaitingState() {
   document.getElementById("price-filter").hidden = true;
   document.getElementById("price-filter").classList.remove("active");
   document.getElementById("price-panel").hidden = true;
-  document.querySelectorAll(".price-option").forEach((b) => b.classList.remove("selected"));
-  document.querySelector('.price-option[data-filter="any"]').classList.add("selected");
+  document
+    .querySelectorAll(".price-option")
+    .forEach((b) => b.classList.remove("selected"));
+  document
+    .querySelector('.price-option[data-filter="any"]')
+    .classList.add("selected");
   document.getElementById("size-panel").hidden = true;
 }
 
