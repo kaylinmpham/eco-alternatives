@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mint Condition",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Find it in mint condition. Secondhand alternatives while you shop.",
   "permissions": ["sidePanel", "storage", "scripting"],
   "host_permissions": ["<all_urls>"],
